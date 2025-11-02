@@ -1,5 +1,8 @@
 import 'dart:async'; // Used for Timer functionality
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart'; // <-- NAKA-FIX NA ANG TYPO DITO
+import 'package:plagiarishield_sim/storage/credential_storage.dart';
+import 'package:plagiarishield_sim/screens/home_screen.dart';
+import 'package:plagiarishield_sim/screens/login_screen.dart';
 
 /// SplashScreen widget - shown first when the app launches.
 /// It displays the app logo and name with a fade-in animation,
@@ -32,11 +35,33 @@ class _SplashScreenState extends State<SplashScreen>
     // Start the fade-in animation immediately
     _controller.forward();
 
-    // After 3 seconds, navigate to the Login screen
-    Timer(const Duration(seconds: 3), () {
-      Navigator.pushReplacementNamed(context, '/login');
-    });
+    // --- LOGIC NA BINAGO ---
+    // After 3 seconds, check login status then navigate
+    Timer(const Duration(seconds: 3), _checkLoginStatus);
   }
+
+  /// --- BAGONG FUNCTION ---
+  /// Checks if a user is already logged in and navigates to the correct screen.
+  Future<void> _checkLoginStatus() async {
+    final userId = await CredentialService.instance.getActiveUserId();
+
+    if (!mounted) return; // Check if the widget is still in the tree
+
+    if (userId != null) {
+      // If user is logged in, go to Home
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    } else {
+      // If no user, go to Login
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+    }
+  }
+  /// --- END NG BAGONG FUNCTION ---
 
   @override
   void dispose() {
@@ -64,7 +89,7 @@ class _SplashScreenState extends State<SplashScreen>
               const SizedBox(height: 20), // Spacing between logo and text
               // App title text
               const Text(
-                'PlagiariShield',
+                'PlagiariShield 2.0',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
@@ -78,3 +103,4 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 }
+

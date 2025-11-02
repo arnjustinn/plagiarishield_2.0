@@ -4,7 +4,10 @@ import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/home_screen.dart';
 
-void main() {
+void main() async { // <-- GINAWANG ASYNC
+  // Tinitiyak na ang Flutter ay handa na bago mag-run ng app
+  WidgetsFlutterBinding.ensureInitialized(); 
+  
   // Entry point of the app
   runApp(const PlagiariShieldApp());
 }
@@ -17,7 +20,7 @@ class PlagiariShieldApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false, // Removes the debug banner
-      title: 'PlagiariShield',
+      title: 'PlagiariShield 2.0',
       
       // First screen shown when app starts
       initialRoute: '/',

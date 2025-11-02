@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'report_screen.dart';
 import 'package:plagiarishield_sim/widgets/bottom_nav_bar.dart';
 import '../utils/extractor.dart';
+import 'package:plagiarishield_sim/storage/credential_storage.dart'; // <-- IMPORT ITO
 
 /// HomeScreen - Main screen for checking plagiarism
 /// Allows users to input text manually, upload documents, or extract text from images.
@@ -20,10 +21,13 @@ int _charCount = 0; // Tracks live character count in manual text input
 
 class _HomeScreenState extends State<HomeScreen> {
   String inputText = '';
+  String _username = ''; // <-- BAGONG STATE VARIABLE
 
   @override
   void initState() {
     super.initState();
+    _loadUsername(); // <-- TAWAGIN ANG FUNCTION PARA KUNIN ANG USERNAME
+
     // Listen for text changes in manual input
     _manualController.addListener(() {
       setState(() {
@@ -33,10 +37,23 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-
+  // --- BAGONG FUNCTION ---
+  /// Kukunin ang pangalan ng active user mula sa storage
+  Future<void> _loadUsername() async {
+    final userId = await CredentialService.instance.getActiveUserId();
+    if (userId == null) return;
+    final username = await CredentialService.instance.getUsernameById(userId);
+    if (username != null && mounted) {
+      setState(() {
+        _username = username;
+      });
+    }
+  }
+  // --- END NG BAGONG FUNCTION ---
 
   /// Navigates to the ReportScreen with the provided text for plagiarism checking
   void _checkPlagiarism(String text) {
+    if (!mounted) return; // Check if the widget is still mounted
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -68,19 +85,55 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } catch (e) {
       extractedText = 'Failed to extract text.';
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error extracting text from file: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return; // Stop if extraction failed
     }
 
     _checkPlagiarism(extractedText);
   }
 
-
   /// Picks an image file and extracts text using Google ML Kit OCR
-Future<void> _pickImageAndRecognizeText() async {
-  final recognizedText = await extractTextFromImage();
-  if (recognizedText != null && recognizedText.trim().isNotEmpty) {
+  Future<void> _pickImageAndRecognizeText() async {
+    final recognizedText = await extractTextFromImage();
+
+    // --- BAGONG ERROR HANDLING ---
+    if (recognizedText == null || recognizedText.trim().isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                      "The image doesn't have recognizable text. Try another one."),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10.0),
+            ),
+            margin: const EdgeInsets.all(10),
+          ),
+        );
+      }
+      return; // Huwag ituloy kung walang text
+    }
+    // --- END NG BAGONG ERROR HANDLING ---
+
+    // Ituloy lang kung may text
     _checkPlagiarism(recognizedText);
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -110,7 +163,7 @@ Future<void> _pickImageAndRecognizeText() async {
             children: [
               // --- Manual Text Input Section ---
               Text(
-                'Hello!',
+                'Hello, $_username!', // <-- BINAGO NA ANG TEXT DITO
                 style: theme.textTheme.titleLarge
                     ?.copyWith(fontWeight: FontWeight.bold),
               ),
@@ -142,6 +195,7 @@ Future<void> _pickImageAndRecognizeText() async {
                 label: const Text('Check Plagiarism'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF43C5FC),
+                  foregroundColor: Colors.white, // Tiniyak na puti ang text
                   minimumSize: const Size(double.infinity, 48),
                 ),
               ),
@@ -192,3 +246,4 @@ Future<void> _pickImageAndRecognizeText() async {
     );
   }
 }
+

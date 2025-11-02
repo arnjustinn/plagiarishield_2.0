@@ -16,15 +16,39 @@ class _SignupScreenState extends State<SignupScreen> {
   // Controllers for username and password input fields
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController(); // Bagong controller
 
   bool _isButtonEnabled = false; // Controls whether the signup button is active
   String? _errorMessage; // Displays error messages (e.g., duplicate username)
 
-  /// Checks if both fields have input, enabling the Sign Up button
+  /// Checks if all fields have valid input, enabling the Sign Up button
   void _checkInput() {
+    final username = _usernameController.text;
+    final password = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
+
+    String? error;
+    bool enabled = false;
+
+    if (username.isNotEmpty ||
+        password.isNotEmpty ||
+        confirmPassword.isNotEmpty) {
+      if (username.length < 4) {
+        error = 'Username must be at least 4 characters long.';
+      } else if (password.isEmpty) {
+        error = 'Password cannot be empty.';
+      } else if (password != confirmPassword) {
+        error = 'Passwords do not match.';
+      } else {
+        error = null;
+        enabled = true; // All checks passed
+      }
+    }
+
     setState(() {
-      _isButtonEnabled =
-          _usernameController.text.isNotEmpty && _passwordController.text.isNotEmpty;
+      _errorMessage = error;
+      _isButtonEnabled = enabled;
     });
   }
 
@@ -33,6 +57,10 @@ class _SignupScreenState extends State<SignupScreen> {
   /// - Redirects to LoginScreen if successful
   /// - Shows an error if username already exists
   Future<void> _signup() async {
+    // Re-check just in case
+    _checkInput();
+    if (!_isButtonEnabled) return;
+
     final success = await CredentialService.instance.register(
       _usernameController.text.trim(),
       _passwordController.text.trim(),
@@ -58,6 +86,15 @@ class _SignupScreenState extends State<SignupScreen> {
     // Attach listeners to input fields to enable/disable the button dynamically
     _usernameController.addListener(_checkInput);
     _passwordController.addListener(_checkInput);
+    _confirmPasswordController.addListener(_checkInput); // Bagong listener
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
   }
 
   @override
@@ -71,7 +108,8 @@ class _SignupScreenState extends State<SignupScreen> {
           padding: const EdgeInsets.all(24.0),
           child: Card(
             elevation: 8,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             child: Padding(
               padding: const EdgeInsets.all(24.0),
               child: Column(
@@ -95,7 +133,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   TextField(
                     controller: _usernameController,
                     decoration: const InputDecoration(
-                      labelText: 'Username',
+                      labelText: 'Username (Min. 4 characters)',
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -110,11 +148,26 @@ class _SignupScreenState extends State<SignupScreen> {
                       border: OutlineInputBorder(),
                     ),
                   ),
+                  const SizedBox(height: 15),
+
+                  // Confirm Password input field (hidden text)
+                  TextField(
+                    controller: _confirmPasswordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Confirm Password',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
 
                   // Show error message if signup fails
                   if (_errorMessage != null) ...[
-                    const SizedBox(height: 10),
-                    Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+                    const SizedBox(height: 12),
+                    Text(
+                      _errorMessage!,
+                      style: const TextStyle(color: Colors.red, fontSize: 13),
+                      textAlign: TextAlign.center,
+                    ),
                   ],
 
                   const SizedBox(height: 20),
@@ -134,7 +187,8 @@ class _SignupScreenState extends State<SignupScreen> {
                         // Slightly faded button when disabled
                         disabledBackgroundColor: primary.withOpacity(0.5),
                       ),
-                      child: const Text('Sign Up', style: TextStyle(fontSize: 16)),
+                      child:
+                          const Text('Sign Up', style: TextStyle(fontSize: 16)),
                     ),
                   ),
 

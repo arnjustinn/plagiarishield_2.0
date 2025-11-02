@@ -5,9 +5,12 @@ class HistoryEntry {
   final String source; // Original input (e.g., file name or typed text)
   final String summary; // Short summary of the content checked
   final String timestamp; // When this entry was created (ISO string recommended)
-  final double plagiarismPercentage; // Percentage of plagiarized content
-  final List<int> plagiarizedIndexes; // Stores indexes of plagiarized sentences/words
-  final int totalSentences; // Total number of sentences in the text
+
+  // -----------------------------------------------------------------
+  // BINAGO: Imbes na isang resulta lang, ise-save na natin ang buong
+  // listahan ng JSON response mula sa API.
+  // -----------------------------------------------------------------
+  final List<dynamic> apiResponse; // Stores the full JSON list from the API
 
   // Constructor
   HistoryEntry({
@@ -16,9 +19,7 @@ class HistoryEntry {
     required this.source,
     required this.summary,
     required this.timestamp,
-    required this.plagiarismPercentage,
-    required this.plagiarizedIndexes,
-    required this.totalSentences,
+    required this.apiResponse, // Updated
   });
 
   // Converts HistoryEntry object → JSON (Map form)
@@ -28,52 +29,47 @@ class HistoryEntry {
         'source': source,
         'summary': summary,
         'timestamp': timestamp,
-        'plagiarismPercentage': plagiarismPercentage,
-        'plagiarizedIndexes': plagiarizedIndexes,
-        'totalSentences': totalSentences,
+        'apiResponse': apiResponse, // Updated
       };
 
   // Creates a HistoryEntry object from JSON (Map form)
-  // If the stored JSON has no reportId (old entries), we create a fallback id
   factory HistoryEntry.fromJson(Map<String, dynamic> json) {
     final userId = json['userId'] ?? '';
     final timestamp = json['timestamp'] ?? DateTime.now().toIso8601String();
     final fallbackId = '${userId}_$timestamp';
 
+    // -----------------------------------------------------------------
+    // Tinitiyak na ang 'apiResponse' ay palaging isang List.
+    // Kung luma ang data (single map lang), ibabalot natin ito sa list.
+    // -----------------------------------------------------------------
+    dynamic rawResponse = json['apiResponse'];
+    List<dynamic> parsedResponse;
+
+    if (rawResponse is List) {
+      parsedResponse = rawResponse;
+    } else if (rawResponse is Map) {
+      // Ito ay para sa lumang data format. I-convert natin ito.
+      parsedResponse = [rawResponse];
+    } else {
+      // Fallback para kung sakaling corrupt o wala ang data
+      parsedResponse = [
+        {
+          "label": "Error",
+          "confidence": 0.0,
+          "closest_text": "Could not load history data.",
+          "text": json['source'] ?? "No text found."
+        }
+      ];
+    }
+
     return HistoryEntry(
       reportId: json['reportId'] ?? fallbackId,
       userId: userId,
       source: json['source'] ?? '',
-      summary: json['summary'] ?? '',
+      summary: json['summary'] ?? 'History Entry',
       timestamp: timestamp,
-      plagiarismPercentage:
-          (json['plagiarismPercentage'] ?? 0).toDouble(),
-      plagiarizedIndexes:
-          json['plagiarizedIndexes'] == null ? <int>[] : List<int>.from(json['plagiarizedIndexes']),
-      totalSentences: json['totalSentences'] ?? 1,
-    );
-  }
-
-  // Creates a copy of this HistoryEntry with updated fields
-  HistoryEntry copyWith({
-    String? reportId,
-    String? userId,
-    String? source,
-    String? summary,
-    String? timestamp,
-    double? plagiarismPercentage,
-    List<int>? plagiarizedIndexes,
-    int? totalSentences,
-  }) {
-    return HistoryEntry(
-      reportId: reportId ?? this.reportId,
-      userId: userId ?? this.userId,
-      source: source ?? this.source,
-      summary: summary ?? this.summary,
-      timestamp: timestamp ?? this.timestamp,
-      plagiarismPercentage: plagiarismPercentage ?? this.plagiarismPercentage,
-      plagiarizedIndexes: plagiarizedIndexes ?? this.plagiarizedIndexes,
-      totalSentences: totalSentences ?? this.totalSentences,
+      apiResponse: parsedResponse, // Updated
     );
   }
 }
+

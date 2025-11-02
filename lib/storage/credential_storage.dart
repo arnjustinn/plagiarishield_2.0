@@ -9,12 +9,14 @@ class CredentialService {
   CredentialService._privateConstructor();
 
   // Single shared instance of this service
-  static final CredentialService instance = CredentialService._privateConstructor();
+  static final CredentialService instance =
+      CredentialService._privateConstructor();
 
   // Keys used in SharedPreferences
-  static const String _accountsKey = 'accounts';       // Key for storing all accounts
-  static const String _activeUserKey = 'active_user';  // Key for currently logged-in user
-  final _uuid = Uuid(); // Utility to generate unique IDs for users
+  static const String _accountsKey = 'accounts'; // Key for storing all accounts
+  static const String _activeUserKey =
+      'active_user'; // Key for currently logged-in user
+  final _uuid = const Uuid(); // Utility to generate unique IDs for users
 
   /// Register a new account with a unique userId.
   /// Returns `true` if registration succeeds, `false` if username already exists.
@@ -26,7 +28,11 @@ class CredentialService {
     if (accounts.values.any((v) => v['username'] == username)) return false;
 
     final userId = _uuid.v4(); // Generate unique ID for this user
-    accounts[userId] = {'username': username, 'password': password};
+    accounts[userId] = {
+      'username': username,
+      'password': password,
+      'profileImagePath': null, // Bagong field
+    };
 
     // Save updated accounts and set this user as active
     await prefs.setString(_accountsKey, jsonEncode(accounts));
@@ -43,7 +49,7 @@ class CredentialService {
     // Find user by username
     final entry = accounts.entries.firstWhere(
       (e) => e.value['username'] == username,
-      orElse: () => MapEntry('', {}),
+      orElse: () => const MapEntry('', {}),
     );
 
     // Fail if user does not exist or password is incorrect
@@ -73,6 +79,13 @@ class CredentialService {
     return accounts[userId]?['username'];
   }
 
+  /// Get profile image path by a given userId.
+  Future<String?> getProfileImagePath(String userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final accounts = _readAccounts(prefs);
+    return accounts[userId]?['profileImagePath'];
+  }
+
   /// Retrieve the password of a user by username (for internal use only).
   Future<String?> getPasswordForUser(String username) async {
     final prefs = await SharedPreferences.getInstance();
@@ -81,7 +94,7 @@ class CredentialService {
     // Look up user entry
     final entry = accounts.entries.firstWhere(
       (e) => e.value['username'] == username,
-      orElse: () => MapEntry('', {}),
+      orElse: () => const MapEntry('', {}),
     );
 
     return entry.value.isEmpty ? null : entry.value['password'];
@@ -109,9 +122,26 @@ class CredentialService {
     }
 
     // Update credentials and keep user active
-    accounts[userId] = {'username': newUsername, 'password': newPassword};
+    accounts[userId] = {
+      'username': newUsername,
+      'password': newPassword,
+      'profileImagePath':
+          accounts[userId]?['profileImagePath'], // Preserve existing image path
+    };
     await prefs.setString(_accountsKey, jsonEncode(accounts));
     await prefs.setString(_activeUserKey, userId);
+    return true;
+  }
+
+  /// Updates only the profile image path for a user.
+  Future<bool> updateProfileImagePath(String userId, String imagePath) async {
+    final prefs = await SharedPreferences.getInstance();
+    final accounts = _readAccounts(prefs);
+
+    if (!accounts.containsKey(userId)) return false;
+
+    accounts[userId]?['profileImagePath'] = imagePath;
+    await prefs.setString(_accountsKey, jsonEncode(accounts));
     return true;
   }
 
@@ -128,3 +158,4 @@ class CredentialService {
     }
   }
 }
+
